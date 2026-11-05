@@ -212,6 +212,12 @@ type Exif struct {
 //
 // The error can be inspected with functions such as IsCriticalError
 // to determine whether the returned object might still be usable.
+//
+// In a JPEG, Decode decodes the first APP1 segment with EXIF, as found by
+// FindJPEGExif. Without one before the image data, it decodes the APP1
+// segment at the first FF E1 byte pair in r. If r ends within its
+// headers, and there is no EXIF at such a pair, Decode returns an error
+// wrapping io.ErrUnexpectedEOF.
 func Decode(r io.Reader) (*Exif, error) {
 
 	// EXIF data in JPEG is stored in the APP1 marker. EXIF data uses the TIFF
@@ -249,6 +255,7 @@ func Decode(r io.Reader) (*Exif, error) {
 		er  *bytes.Reader
 		tif *tiff.Tiff
 		sec *appSec
+		raw []byte // for the Exif, or nil to read from er
 	)
 
 	switch {
@@ -270,16 +277,33 @@ func Decode(r io.Reader) (*Exif, error) {
 		tif, err = tiff.Decode(tr)
 		er = bytes.NewReader(b.Bytes())
 	case assumeJPEG:
-		// Locate the JPEG APP1 header.
-		sec, err = newAppSec(jpeg_APP1, r)
+		// Locate the JPEG APP1 segment with EXIF. Other APP1 segments,
+		// such as XMP, may precede it.
+		jr := getJPEGReaders(r)
+		_, data, findErr := findJPEGExif(jr.br)
+		if findErr == nil {
+			raw = data[len(exifHeader):]
+		} else {
+			// Without one in the JPEG headers, or if r isn't a
+			// JPEG, search all of r for an APP1 marker.
+			sec, err = newAppSec(jpeg_APP1, io.MultiReader(&jr.read, r))
+			if err == nil {
+				// Strip away EXIF header.
+				if _, err = sec.exifReader(); err == nil {
+					raw = sec.data[len(exifHeader):]
+				}
+			}
+		}
+		jr.release()
 		if err != nil {
+			if findErr == errJPEGTruncated {
+				return nil, findErr
+			}
 			return nil, err
 		}
-		// Strip away EXIF header.
-		er, err = sec.exifReader()
-		if err != nil {
-			return nil, err
-		}
+		// raw is a copy of the segment that nothing else retains,
+		// so it can be the Exif's Raw, without copying it again.
+		er = bytes.NewReader(raw)
 		tif, err = tiff.Decode(er)
 	}
 
@@ -287,10 +311,12 @@ func Decode(r io.Reader) (*Exif, error) {
 		return nil, decodeError{cause: err}
 	}
 
-	er.Seek(0, 0)
-	raw, err := ioutil.ReadAll(er)
-	if err != nil {
-		return nil, decodeError{cause: err}
+	if raw == nil {
+		er.Seek(0, 0)
+		raw, err = ioutil.ReadAll(er)
+		if err != nil {
+			return nil, decodeError{cause: err}
+		}
 	}
 
 	// build an exif structure from the tiff
