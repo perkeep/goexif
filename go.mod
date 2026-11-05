@@ -1,3 +1,3 @@
 module github.com/perkeep/goexif
 
-go 1.21
+go 1.27
