@@ -1,7 +1,10 @@
 goexif
 ======
 
-[![GoDoc](https://godoc.org/github.com/rwcarlsen/goexif?status.svg)](https://godoc.org/github.com/rwcarlsen/goexif)
+[![Go Reference](https://pkg.go.dev/badge/github.com/perkeep/goexif.svg)](https://pkg.go.dev/github.com/perkeep/goexif)
+
+This is [Perkeep](https://perkeep.org/)'s fork of
+[github.com/rwcarlsen/goexif](https://github.com/rwcarlsen/goexif).
 
 Provides decoding of basic exif and tiff encoded data. Still in alpha - no guarantees.
 Suggestions and pull requests are welcome.  Functionality is split into two packages - "exif" and "tiff"
@@ -12,13 +15,13 @@ Like goexif? - Bitcoin Cash tips welcome: 1DrU5V37nTXuv4vnRLVpahJEjhdATNgoBh
 To install, in a terminal type:
 
 ```
-go get github.com/rwcarlsen/goexif/exif
+go get github.com/perkeep/goexif/exif
 ```
 
 Or if you just want the tiff package:
 
 ```
-go get github.com/rwcarlsen/goexif/tiff
+go get github.com/perkeep/goexif/tiff
 ```
 
 Example usage:
@@ -31,8 +34,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/rwcarlsen/goexif/exif"
-	"github.com/rwcarlsen/goexif/mknote"
+	"github.com/perkeep/goexif/exif"
+	"github.com/perkeep/goexif/mknote"
 )
 
 func ExampleDecode() {
